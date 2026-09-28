@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Jozi Air Busters</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sky-clear:#2E86AB; --sky-mid:#5B7A8C; --sky-haze:#8B8378;
+    --earth:#C1440E; --taxi:#FFC72C; --ink:#1B1A17; --paper:#F5F1E8;
+    --leaf:#3F8F29; --danger:#D7263D; --line:rgba(27,26,23,0.14);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
+  html,body{height:100%; margin:0; overscroll-behavior:none; touch-action:none; font-family:'Inter',sans-serif; color:var(--ink); background:var(--ink);}
+  #stage{position:fixed; inset:0; overflow:hidden; display:flex; flex-direction:column; background:linear-gradient(180deg,var(--sky-mid),#C7BCA6 78%,#B7A98C);}
+
+  /* ---------- HUD ---------- */
+  #hud{position:relative; z-index:5; flex:0 0 auto; display:flex; align-items:center; gap:8px; padding:calc(env(safe-area-inset-top,0px) + 10px) 10px 6px; flex-wrap:wrap;}
+  .hud-chip{background:rgba(245,241,232,0.92); border-radius:14px; padding:6px 10px; display:flex; align-items:center; gap:6px; font-family:'Baloo 2',sans-serif; font-weight:700; font-size:14px; box-shadow:0 2px 0 rgba(27,26,23,0.15); white-space:nowrap;}
+  #barsCol{flex:1; min-width:110px; display:flex; flex-direction:column; gap:4px;}
+  .barWrap{height:14px; background:rgba(27,26,23,0.25); border-radius:10px; overflow:hidden; position:relative; box-shadow:inset 0 0 0 2px rgba(245,241,232,0.5);}
+  .barFill{height:100%; width:50%; background:linear-gradient(90deg,#3F8F29,#7BC142); transition:width .18s ease, background .3s ease;}
+  .barWrap .lbl{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font:700 8px/1 'Inter',sans-serif; letter-spacing:.06em; color:rgba(245,241,232,0.95); text-shadow:0 1px 2px rgba(0,0,0,.4);}
+  #breathRow{display:none;}
+  #muteBtn{flex:0 0 auto; background:rgba(245,241,232,0.92); border:none; border-radius:12px; width:34px; height:34px; font-size:16px; cursor:pointer; box-shadow:0 2px 0 rgba(27,26,23,0.15); display:flex; align-items:center; justify-content:center;}
+
+  /* ---------- Canvas game area ---------- */
+  #gameArea{position:relative; flex:1; min-height:0;}
+  canvas{display:block; width:100%; height:100%;}
+  #comboTag{position:absolute; top:8px; left:50%; transform:translateX(-50%) scale(0.8); font-family:'Baloo 2',sans-serif; font-weight:800; font-size:15px; color:var(--taxi); text-shadow:0 2px 4px rgba(0,0,0,.5); opacity:0; transition:opacity .15s, transform .15s; pointer-events:none; z-index:6;}
+  #comboTag.show{opacity:1; transform:translateX(-50%) scale(1);}
+  #hypeText{position:absolute; top:38%; left:50%; transform:translate(-50%,-50%) scale(0.6) rotate(-4deg); font-family:'Baloo 2',sans-serif; font-weight:800; font-size:clamp(26px,9vw,42px); color:var(--taxi); -webkit-text-stroke:2px var(--ink); text-shadow:0 4px 0 rgba(27,26,23,.5); opacity:0; pointer-events:none; z-index:7; white-space:nowrap; transition:opacity .18s ease, transform .28s cubic-bezier(.2,1.6,.4,1);}
+  #hypeText.show{opacity:1; transform:translate(-50%,-50%) scale(1) rotate(-4deg);}
+  #vignette{position:absolute; inset:0; z-index:4; pointer-events:none; opacity:0; transition:opacity .3s;}
+  #vignette.danger{opacity:1; animation:pulseVign 0.9s ease-in-out infinite;}
+  @keyframes pulseVign{0%,100%{box-shadow:inset 0 0 40px 10px rgba(215,38,45,0.35);} 50%{box-shadow:inset 0 0 70px 22px rgba(215,38,45,0.6);}}
+  #bossTag{position:absolute; top:8px; left:50%; transform:translateX(-50%); font-family:'Baloo 2',sans-serif; font-weight:800; font-size:13px; color:var(--paper); background:rgba(27,26,23,.55); padding:4px 12px; border-radius:10px; z-index:6; display:none; letter-spacing:.03em;}
+
+  /* ---------- Overlays ---------- */
+  .overlay{position:absolute; inset:0; z-index:20; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px 20px; text-align:center; background:radial-gradient(120% 100% at 50% 0%, rgba(46,134,171,0.92), rgba(20,26,31,0.96) 75%); color:var(--paper); overflow-y:auto;}
+  .hidden{display:none !important;}
+  .brandmark{display:flex; align-items:center; gap:10px; margin-bottom:4px;}
+  .brandmark svg{width:40px; height:40px;}
+  h1.title{font-family:'Baloo 2',sans-serif; font-weight:800; font-size:clamp(30px,9vw,42px); line-height:0.95; margin:4px 0 2px; letter-spacing:.01em;}
+  h1.title .accent{color:var(--taxi);}
+  .subtitle{font-size:13.5px; line-height:1.5; max-width:320px; margin:4px 0 14px; color:rgba(245,241,232,.88);}
+  .section-label{font-size:11px; letter-spacing:.1em; color:rgba(245,241,232,.65); margin:10px 0 6px; text-transform:uppercase;}
+
+  /* zone chips */
+  #zoneRow{display:flex; gap:8px; overflow-x:auto; max-width:100%; padding:2px 4px 8px; -webkit-overflow-scrolling:touch;}
+  .zoneChip{flex:0 0 auto; font-family:'Inter'; font-weight:600; font-size:12.5px; background:rgba(245,241,232,0.1); border:1.5px solid rgba(245,241,232,0.3); color:var(--paper); padding:8px 13px; border-radius:20px; cursor:pointer;}
+  .zoneChip.active{background:var(--taxi); border-color:var(--taxi); color:var(--ink);}
+
+  /* mode cards */
+  #modeRow{display:flex; gap:10px; flex-wrap:wrap; justify-content:center; max-width:360px; margin-bottom:6px;}
+  .modeCard{width:104px; background:rgba(245,241,232,0.08); border:1.5px solid rgba(245,241,232,0.25); border-radius:14px; padding:10px 8px; cursor:pointer; font-family:'Inter';}
+  .modeCard .ic{font-size:26px; display:block; margin-bottom:4px;}
+  .modeCard b{display:block; font-family:'Baloo 2',sans-serif; font-size:13px; margin-bottom:2px;}
+  .modeCard span{font-size:10.5px; color:rgba(245,241,232,.75); line-height:1.3; display:block;}
+  .modeCard.active{background:var(--taxi); border-color:var(--taxi); color:var(--ink);}
+  .modeCard.active span{color:rgba(27,26,23,.75);}
+
+  button.cta{font-family:'Baloo 2',sans-serif; font-weight:700; font-size:18px; background:var(--taxi); color:var(--ink); border:none; border-radius:16px; padding:14px 32px; box-shadow:0 5px 0 #C08E00; cursor:pointer; transition:transform .08s; margin-top:8px;}
+  button.cta:active{transform:translateY(3px); box-shadow:0 2px 0 #C08E00;}
+  button.ghost{margin-top:10px; background:transparent; color:rgba(245,241,232,.85); border:1px solid rgba(245,241,232,.4); font-family:'Inter'; font-weight:600; font-size:12.5px; border-radius:12px; padding:8px 16px; cursor:pointer;}
+
+  .result-score{font-family:'Baloo 2',sans-serif; font-weight:800; font-size:52px; margin:2px 0 0; color:var(--taxi);}
+  .result-label{font-size:11px; letter-spacing:.08em; color:rgba(245,241,232,.7); margin-bottom:4px;}
+  .best-line{font-size:12px; color:rgba(245,241,232,.7); margin:0 0 12px;}
+  .fact-card{background:rgba(245,241,232,0.12); border:1px solid rgba(245,241,232,.25); border-radius:16px; padding:13px 15px; max-width:320px; font-size:13px; line-height:1.5; text-align:left; margin-bottom:14px;}
+  .fact-card b{color:var(--taxi); display:block; font-family:'Baloo 2',sans-serif; font-size:11.5px; letter-spacing:.04em; margin-bottom:4px;}
+
+  #saveRow{display:flex; gap:8px; align-items:center; margin-top:4px;}
+  #initialsInput{width:64px; text-align:center; text-transform:uppercase; font-family:'Baloo 2',sans-serif; font-weight:700; font-size:16px; border-radius:10px; border:none; padding:9px 6px; letter-spacing:.1em;}
+  #saveScoreBtn{font-family:'Inter'; font-weight:700; font-size:12.5px; background:var(--leaf); color:#fff; border:none; border-radius:10px; padding:10px 14px; cursor:pointer;}
+
+  /* leaderboard */
+  #lbList{list-style:none; margin:0; padding:0; width:100%; max-width:340px; text-align:left;}
+  #lbList li{display:flex; align-items:center; gap:10px; background:rgba(245,241,232,0.08); border:1px solid rgba(245,241,232,.18); border-radius:12px; padding:9px 12px; margin-bottom:7px; font-size:13px;}
+  #lbList li .rank{font-family:'Baloo 2',sans-serif; font-weight:800; color:var(--taxi); width:22px;}
+  #lbList li .who{font-family:'Baloo 2',sans-serif; font-weight:700; flex:1;}
+  #lbList li .tag{font-size:10px; color:rgba(245,241,232,.6);}
+  #lbList li .pts{font-family:'Baloo 2',sans-serif; font-weight:800;}
+  #lbEmpty{font-size:13px; color:rgba(245,241,232,.7); margin:20px 0;}
+
+  /* quiz */
+  #quizOverlay .qWrap{width:100%; max-width:340px;}
+  #quizTimerBar{height:6px; border-radius:6px; background:rgba(245,241,232,.2); overflow:hidden; margin-bottom:14px;}
+  #quizTimerFill{height:100%; width:100%; background:var(--taxi); transition:width .1s linear;}
+  #quizProgress{font-size:11px; letter-spacing:.08em; color:rgba(245,241,232,.65); margin-bottom:6px;}
+  #quizQ{font-family:'Baloo 2',sans-serif; font-weight:700; font-size:19px; line-height:1.3; margin-bottom:16px;}
+  .quizOpt{display:block; width:100%; text-align:left; background:rgba(245,241,232,0.1); border:1.5px solid rgba(245,241,232,0.28); color:var(--paper); font-family:'Inter'; font-weight:600; font-size:14px; border-radius:12px; padding:12px 14px; margin-bottom:9px; cursor:pointer;}
+  .quizOpt.correct{background:var(--leaf); border-color:var(--leaf); color:#fff;}
+  .quizOpt.wrong{background:var(--danger); border-color:var(--danger); color:#fff;}
+  #quizExplain{font-size:12.5px; line-height:1.5; color:rgba(245,241,232,.85); text-align:left; background:rgba(245,241,232,.08); border-radius:12px; padding:10px 12px; margin-top:4px; display:none;}
+  #quizScoreLine{font-family:'Baloo 2',sans-serif; font-weight:700; font-size:13px; color:var(--taxi); margin-bottom:8px;}
+
+  footer.credit{margin-top:16px; font-size:10.5px; letter-spacing:.04em; color:rgba(245,241,232,.5);}
+  #startOverlay{background:radial-gradient(90% 55% at 15% 0%,rgba(255,122,61,.45),transparent 60%),radial-gradient(90% 55% at 95% 8%,rgba(123,92,255,.5),transparent 60%),linear-gradient(180deg,#1E9BC9,#14324A 62%,#0B1620);}
+  .modeCard:nth-child(1){border-color:#3FD17F} .modeCard:nth-child(2){border-color:#7B5CFF} .modeCard:nth-child(3){border-color:#FF5C8A}
+  .modeCard.active:nth-child(1){background:#3FD17F;border-color:#3FD17F} .modeCard.active:nth-child(2){background:#A38CFF;border-color:#A38CFF} .modeCard.active:nth-child(3){background:#FF7AA2;border-color:#FF7AA2}
+  h1.title{text-shadow:0 4px 0 rgba(0,0,0,.3),0 0 24px rgba(255,199,44,.35);}
+  button.cta{background:linear-gradient(180deg,#FFD84D,#FFB300);animation:pulseCta 1.6s ease-in-out infinite;}
+  @keyframes pulseCta{0%,100%{transform:scale(1)}50%{transform:scale(1.045)}}
+  .hud-chip{background:linear-gradient(180deg,#FFFDF5,#F1E7C9);}
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-chip">⭐ <span id="scoreVal">0</span></div>
+    <div id="barsCol">
+      <div class="barWrap" id="mainBarWrap"><div class="barFill" id="mainBarFill"></div><div class="lbl" id="mainBarLbl">CLEAN AIR</div></div>
+      <div class="barWrap" id="breathRow"><div class="barFill" id="breathFill" style="background:linear-gradient(90deg,#2E86AB,#5FB8DA);"></div><div class="lbl">YOUR BREATH</div></div>
+    </div>
+    <div class="hud-chip">⏱ <span id="timeVal">60</span>s</div>
+    <button id="muteBtn" aria-label="Mute sound">🔊</button>
+  </div>
+
+  <!-- Game canvas -->
+  <div id="gameArea">
+    <div id="bossTag">SMOG MONSTER</div>
+    <div id="comboTag">COMBO x2</div>
+    <div id="hypeText">NICE!</div>
+    <div id="vignette"></div>
+    <canvas id="game"></canvas>
+  </div>
+
+  <!-- Start screen -->
+  <div id="startOverlay" class="overlay">
+    <div class="brandmark">
+      <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="32" cy="32" r="30" fill="#FFC72C"/>
+        <path d="M14 40c4-10 10-16 18-16s14 6 18 16" stroke="#1B1A17" stroke-width="4" stroke-linecap="round" fill="none"/>
+        <circle cx="24" cy="26" r="4" fill="#1B1A17"/>
+        <circle cx="40" cy="26" r="4" fill="#1B1A17"/>
+      </svg>
+      <div style="text-align:left; font-family:'Inter'; font-size:10.5px; letter-spacing:.14em; color:rgba(245,241,232,.75);">A CLEAN&nbsp;AIR<br>ARCADE GAME</div>
+    </div>
+    <h1 class="title">JOZI AIR<br><span class="accent">BUSTERS</span></h1>
+    <p class="subtitle">Joburg's sky is going hazy. Bust the smoke, fire, fumes and vape clouds across the city — but leave the trees, sun and bikes alone.</p>
+
+    <div class="section-label">Pick your zone</div>
+    <div id="zoneRow"></div>
+
+    <div class="section-label">Pick a mode</div>
+    <div id="modeRow"></div>
+
+    <div class="best-line" id="startBestLine" style="display:none;">Best today: <span id="startBestVal">0</span></div>
+    <button class="cta" id="startBtn">Start Busting</button>
+    <button class="ghost" id="openLbBtn">🏆 Leaderboard</button>
+    <footer class="credit">Jozi Air Busters — created by LEAP4 · © 2026 LEAP4. All rights reserved.</footer>
+  </div>
+
+  <!-- Game over / result screen -->
+  <div id="endOverlay" class="overlay hidden">
+    <div class="result-label" id="endHeadline">ROUND CLEAR</div>
+    <div class="result-score" id="finalScore">0</div>
+    <div class="result-label" style="margin-top:-8px;">POINTS</div>
+    <div class="best-line" id="endBestLine">Best today: 0</div>
+    <div class="fact-card"><b>DID YOU KNOW?</b><span id="factText">—</span></div>
+    <div id="saveRow">
+      <input id="initialsInput" maxlength="3" placeholder="AIR" autocomplete="off">
+      <button id="saveScoreBtn">Save score</button>
+    </div>
+    <button class="cta" id="retryBtn">Play Again</button>
+    <button class="ghost" id="lbFromEndBtn">🏆 View Leaderboard</button>
+  </div>
+
+  <!-- Leaderboard screen -->
+  <div id="lbOverlay" class="overlay hidden">
+    <h1 class="title" style="font-size:28px;">LEADER<span class="accent">BOARD</span></h1>
+    <p class="subtitle" style="margin-bottom:10px;">This session's top air busters.</p>
+    <ol id="lbList"></ol>
+    <div id="lbEmpty" class="hidden">No scores yet — go bust some smog!</div>
+    <button class="cta" id="closeLbBtn">Back</button>
+  </div>
+
+  <!-- Quick Quiz screen -->
+  <div id="quizOverlay" class="overlay hidden">
+    <div class="qWrap">
+      <div id="quizProgress">QUESTION 1 / 8</div>
+      <div id="quizTimerBar"><div id="quizTimerFill"></div></div>
+      <div id="quizScoreLine">⭐ <span id="quizScoreVal">0</span> points</div>
+      <div id="quizQ">Question text goes here?</div>
+      <div id="quizOpts"></div>
+      <div id="quizExplain"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     DATA: zones, facts, quiz questions
+  ============================================================ */
+  const ZONES = [
+    {key:'cbd', name:'Joburg CBD', landmark:'ponte',
+      fact:"Street vendors and market workers in the inner city can breathe in more traffic and cooking fumes over a workday than people in quieter suburbs."},
+    {key:'diepsloot', name:'Diepsloot', landmark:'shacks',
+      fact:"Many Diepsloot homes rely on coal, paraffin and candles for cooking, heating and light — filling cramped living spaces with smoke every day."},
+    {key:'soweto', name:'Soweto', landmark:'towers',
+      fact:"Soweto and nearby townships face heavy exposure to vehicle fumes, informal waste burning, and dust blown off old mine dumps."},
+    {key:'alexandra', name:'Alexandra', landmark:'dense',
+      fact:"Dense, low-income areas like Alexandra carry more than their share of the city's air pollution, despite contributing less of it."},
+    {key:'sandton', name:'Sandton', landmark:'skyscrapers',
+      fact:"During power cuts, wealthier suburbs like Sandton lean hard on diesel generators — quietly adding pollution even where the air looks clean."}
+  ];
+
+  const FACTS = [
+    "Joburg sits high on the Highveld, where calm, still weather often traps polluted air close to the ground instead of blowing it away.",
+    "The Highveld Priority Area is one of South Africa's most polluted regions, largely because of nearby coal-fired power stations and heavy industry.",
+    "South Africa releases more sulphur dioxide — a gas linked to asthma and bronchitis — than any other country in Africa, mostly from burning coal for power.",
+    "In 2022 a South African court ruled that breathing badly polluted Highveld air breaches people's constitutional right to a healthy environment.",
+    "Children and teens are hit hardest by air pollution because their lungs are still growing and developing.",
+    "Young Joburgers are already fighting back — youth-led groups run workshops and campaigns pushing the city toward cleaner air.",
+    "Close to half of Johannesburg residents say they're worried about how today's air pollution will affect future generations.",
+    "Around a fifth of fine-particle pollution in Johannesburg comes from wood and coal fires used for everyday cooking and heating."
+  ];
+
+  const QUIZ = [
+    {q:"Why does polluted air often hang over Johannesburg instead of blowing away?", explain:"Joburg's Highveld location brings calm, high-pressure weather that traps smoggy air close to the ground.",
+      opts:["It's built in a windless valley","It sits high on the Highveld with still, trapping weather","There are too many trees blocking wind","The city has no wind at all, ever"], correct:1},
+    {q:"What's the biggest source of Johannesburg's sulphur dioxide pollution?", explain:"Coal-fired power stations are the main source — SA emits more SO2 than any other African country.",
+      opts:["Burning coal for electricity","Car tyres wearing down","Ocean spray","Bakeries"], correct:0},
+    {q:"Why are children and teens especially at risk from bad air?", explain:"Young lungs are still developing, so pollution can affect them more than fully grown adults.",
+      opts:["They play indoors more","Their lungs are still developing","They eat more food","They drink more water"], correct:1},
+    {q:"In many Diepsloot homes, what commonly fuels cooking and heating?", explain:"Limited access to reliable electricity means coal, paraffin and candles are widely used, which pollutes indoor air.",
+      opts:["Solar panels only","Natural gas pipelines","Coal, paraffin and candles","Wind turbines"], correct:2},
+    {q:"What happened in a 2022 South African court ruling about the Highveld?", explain:"The court found that chronic air pollution there breaches residents' constitutional right to a healthy environment.",
+      opts:["It banned all cars in Gauteng","It ruled polluted air breaches a constitutional right","It closed all mines immediately","It had no real effect"], correct:1},
+    {q:"During power cuts (load shedding), what do many wealthier suburbs rely on that also pollutes the air?", explain:"Diesel generators keep the lights on but add extra pollution, even in areas that look clean.",
+      opts:["Candles","Diesel generators","Bicycles","Nothing, they just wait"], correct:1},
+    {q:"Dust blown off old mine dumps is a pollution source in which kind of areas?", explain:"Townships near the mining belt, like parts of Soweto, are regularly exposed to wind-blown mine dust.",
+      opts:["Areas near old mine dumps","Areas far from any mining", "Coastal towns only", "Only inside shopping malls"], correct:0},
+    {q:"What's one thing young people in Joburg are doing about air pollution?", explain:"Youth-led groups run campaigns, workshops and outreach pushing the city toward cleaner air.",
+      opts:["Nothing, it's not their problem","Running education campaigns and workshops","Moving out of the city","Ignoring the issue"], correct:1}
+  ];
+
+  /* ============================================================
+     DOM
+  ============================================================ */
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const scoreVal = document.getElementById('scoreVal');
+  const timeVal = document.getElementById('timeVal');
+  const mainBarFill = document.getElementById('mainBarFill');
+  const mainBarLbl = document.getElementById('mainBarLbl');
+  const breathRow = document.getElementById('breathRow');
+  const breathFill = document.getElementById('breathFill');
+  const comboTag = document.getElementById('comboTag');
+  const hypeText = document.getElementById('hypeText');
+  const vignette = document.getElementById('vignette');
+  const bossTag = document.getElementById('bossTag');
+  const muteBtn = document.getElementById('muteBtn');
+  const gameArea = document.getElementById('gameArea');
+
+  const startOverlay = document.getElementById('startOverlay');
+  const endOverlay = document.getElementById('endOverlay');
+  const lbOverlay = document.getElementById('lbOverlay');
+  const quizOverlay = document.getElementById('quizOverlay');
+  const startBtn = document.getElementById('startBtn');
+  const retryBtn = document.getElementById('retryBtn');
+  const openLbBtn = document.getElementById('openLbBtn');
+  const closeLbBtn = document.getElementById('closeLbBtn');
+  const lbFromEndBtn = document.getElementById('lbFromEndBtn');
+  const finalScore = document.getElementById('finalScore');
+  const endHeadline = document.getElementById('endHeadline');
+  const factText = document.getElementById('factText');
+  const startBestLine = document.getElementById('startBestLine');
+  const startBestVal = document.getElementById('startBestVal');
+  const endBestLine = document.getElementById('endBestLine');
+  const zoneRow = document.getElementById('zoneRow');
+  const modeRow = document.getElementById('modeRow');
+  const initialsInput = document.getElementById('initialsInput');
+  const saveScoreBtn = document.getElementById('saveScoreBtn');
+  const lbList = document.getElementById('lbList');
+  const lbEmpty = document.getElementById('lbEmpty');
+
+  /* ============================================================
+     Canvas sizing
+  ============================================================ */
+  let W = 0, H = 0, DPR = Math.min(window.devicePixelRatio || 1, 2);
+  function resize(){
+    const r = gameArea.getBoundingClientRect();
+    W = r.width; H = r.height;
+    canvas.width = W * DPR; canvas.height = H * DPR;
+    canvas.style.width = W+'px'; canvas.style.height = H+'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  /* ============================================================
+     Audio: tiny synth + speech, no external files
+  ============================================================ */
+  let actx;
+  function beep(freq, dur, type, gainAmt){
+    if(muted) return;
+    try{
+      actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+      const o = actx.createOscillator(); const g = actx.createGain();
+      o.type = type || 'sine'; o.frequency.value = freq;
+      g.gain.value = gainAmt || 0.08;
+      o.connect(g); g.connect(actx.destination);
+      const t = actx.currentTime;
+      g.gain.setValueAtTime(g.gain.value, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.start(t); o.stop(t + dur);
+    }catch(e){}
+  }
+  const sfxBust = ()=>beep(520,0.12,'triangle',0.09);
+  const sfxCombo = (n)=>beep(660 + n*40,0.1,'square',0.06);
+  const sfxPenalty = ()=>beep(140,0.22,'sawtooth',0.09);
+  const sfxWin = ()=>{beep(523,0.16,'sine',0.1); setTimeout(()=>beep(784,0.24,'sine',0.1),120);};
+  const sfxLose = ()=>{beep(200,0.3,'sawtooth',0.09); setTimeout(()=>beep(120,0.35,'sawtooth',0.09),150);};
+  const sfxSweep = ()=>{[440,660,880,1180].forEach((f,i)=>setTimeout(()=>beep(f,0.18,'triangle',0.08),i*70));};
+  const sfxTick = ()=>beep(880,0.05,'square',0.03);
+
+  let muted = false;
+  muteBtn.addEventListener('click', ()=>{
+    muted = !muted;
+    muteBtn.textContent = muted ? '🔇' : '🔊';
+    if(muted && hasVoice) speechSynthesis.cancel();
+  });
+  function buzz(pattern){ if(!muted && navigator.vibrate) navigator.vibrate(pattern); }
+
+  const hasVoice = 'speechSynthesis' in window;
+  let voiceReady = null;
+  if(hasVoice){
+    const pick = ()=>{
+      const voices = speechSynthesis.getVoices();
+      if(!voices.length) return;
+      const englishy = voices.filter(v=>/^en/i.test(v.lang));
+      const pool = englishy.length ? englishy : voices;
+      const score = v=>{
+        let s = 0;
+        if(/Google/i.test(v.name)) s += 5;              // Chrome's Google voices sound the most natural
+        if(/Natural|Neural|Enhanced|Premium/i.test(v.name)) s += 4;
+        if(/en-ZA/i.test(v.lang)) s += 3;
+        if(/en-GB|en-US|en-AU/i.test(v.lang)) s += 2;
+        if(v.localService === false) s += 1;             // network voices are usually higher quality
+        if(/Microsoft.*Desktop|eSpeak|Compact/i.test(v.name)) s -= 5; // old robotic engines
+        return s;
+      };
+      voiceReady = pool.slice().sort((a,b)=>score(b)-score(a))[0] || voices[0] || null;
+    };
+    pick(); speechSynthesis.onvoiceschanged = pick;
+  }
+  let lastSpeakAt = 0;
+  function say(phrase, opts){
+    if(muted || !hasVoice) return;
+    const now = performance.now();
+    if(now - lastSpeakAt < 700) return;
+    lastSpeakAt = now;
+    try{
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(phrase);
+      if(voiceReady) u.voice = voiceReady;
+      const jitter = (Math.random()-0.5)*0.05; // tiny natural variance so lines don't sound identical/robotic
+      u.rate = ((opts && opts.rate) || 1.0) + jitter;
+      u.pitch = ((opts && opts.pitch) || 1.0) + jitter*0.6;
+      u.volume = 0.85;
+      speechSynthesis.speak(u);
+    }catch(e){}
+  }
+
+  const LINES_BUST = ["Cleaner air!","Nice bust!","Lekker!","Smash that smog!","Breathe easy!","Yes!","Boom!"];
+  const LINES_VAPE = ["Down with vapes!","Vape-free vibes!","Kick the vape!","No thanks, vape!"];
+  const LINES_COMBO = ["You're on fire!","Unstoppable!","Jozi's sky is clearing!","Air hero mode!","Keep it going!"];
+  const LINES_SWEEP = ["Clean sweep!","Sky's wide open!","That's how it's done!"];
+  const LINES_WIN = ["You cleared the air!","Jozi can breathe again!","Nice work, air hero!"];
+  const LINES_LOSE = ["Smog got the best of us.","Try again, air hero.","The sky needs you."];
+  const LINES_BOSS = ["You can't stop the smog!","Cough it up!","Choke on this!","Is that all you've got?"];
+  const LINES_BOSS_HIT = ["Ow! Not the fumes!","You'll pay for that!","Argh, my smog!"];
+  const LINES_BOSS_WIN = ["The smog monster dissolves into clean air!","Boss busted! Jozi breathes easy!"];
+  const HYPE_WORDS = ["NICE!","SWEET!","ON FIRE!","LEKKER!","UNSTOPPABLE!","AIR HERO!"];
+  function pop(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+  function showHype(word){
+    hypeText.textContent = word;
+    hypeText.classList.remove('show');
+    void hypeText.offsetWidth;
+    hypeText.classList.add('show');
+    clearTimeout(showHype._t);
+    showHype._t = setTimeout(()=>hypeText.classList.remove('show'), 650);
+  }
+
+  /* ============================================================
+     Custom JHB vector icons (drawn on canvas, no emoji/images)
+     Each draw fn renders centred at (0,0), roughly filling a
+     box of size s x s.
+  ============================================================ */
+  function drawFactory(cx,s){
+    const w=s*0.78,h=s*0.5;
+    cx.fillStyle = '#2A2823';
+    cx.fillRect(-w/2, -h*0.05, w, h);
+    cx.fillRect(-w*0.32, -h*0.55, w*0.18, h*0.5);
+    cx.fillRect(-w*0.02, -h*0.4, w*0.16, h*0.35);
+    // smoke plume
+    cx.fillStyle = 'rgba(139,131,120,0.85)';
+    for(let i=0;i<3;i++){
+      cx.beginPath();
+      cx.arc(-w*0.23 + i*3, -h*0.6 - i*7, s*0.13 - i*1.2, 0, Math.PI*2);
+      cx.fill();
+    }
+    // windows
+    cx.fillStyle = 'rgba(255,199,44,0.85)';
+    cx.fillRect(-w*0.1,h*0.05,w*0.12,h*0.12);
+    cx.fillRect(w*0.1,h*0.05,w*0.12,h*0.12);
+  }
+  function drawTyreFire(cx,s){
+    cx.strokeStyle = '#1B1A17'; cx.lineWidth = s*0.13;
+    cx.beginPath(); cx.arc(0,s*0.16,s*0.28,0,Math.PI*2); cx.stroke();
+    cx.fillStyle = '#C1440E';
+    cx.beginPath();
+    cx.moveTo(-s*0.14, s*0.05);
+    cx.quadraticCurveTo(-s*0.2,-s*0.28,0,-s*0.42);
+    cx.quadraticCurveTo(s*0.2,-s*0.24,s*0.14,s*0.05);
+    cx.quadraticCurveTo(0,-s*0.02,-s*0.14,s*0.05);
+    cx.fill();
+    cx.fillStyle = '#FFC72C';
+    cx.beginPath();
+    cx.moveTo(-s*0.06,s*0.02);
+    cx.quadraticCurveTo(-s*0.08,-s*0.14,0,-s*0.24);
+    cx.quadraticCurveTo(s*0.08,-s*0.12,s*0.06,s*0.02);
+    cx.fill();
+  }
+  function drawTaxi(cx,s){
+    const w=s*0.74,h=s*0.32;
+    cx.fillStyle = 'rgba(139,131,120,0.7)';
+    cx.beginPath(); cx.ellipse(-w*0.45,-h*0.6,s*0.12,s*0.09,0,0,Math.PI*2); cx.fill();
+    cx.fillStyle = '#FFC72C';
+    cx.beginPath();
+    cx.moveTo(-w/2,h*0.15); cx.lineTo(-w*0.38,-h*0.55); cx.lineTo(w*0.38,-h*0.55); cx.lineTo(w/2,h*0.15);
+    cx.closePath(); cx.fill();
+    cx.fillStyle = '#1B1A17';
+    cx.fillRect(-w/2,-h*0.05,w,h*0.16);
+    cx.beginPath(); cx.arc(-w*0.28,h*0.22,s*0.1,0,Math.PI*2); cx.fill();
+    cx.beginPath(); cx.arc(w*0.28,h*0.22,s*0.1,0,Math.PI*2); cx.fill();
+  }
+  function drawMineDust(cx,s){
+    cx.fillStyle = '#C1440E';
+    cx.beginPath();
+    cx.moveTo(-s*0.32,s*0.22); cx.lineTo(0,-s*0.4); cx.lineTo(s*0.32,s*0.22);
+    cx.closePath(); cx.fill();
+    cx.fillStyle = 'rgba(139,131,120,0.75)';
+    for(let i=0;i<3;i++){
+      cx.beginPath();
+      cx.ellipse(s*0.05*i, s*0.05-i*8, s*0.16, s*0.08, 0, 0, Math.PI*2);
+      cx.fill();
+    }
+  }
+  function drawVape(cx,s){
+    cx.fillStyle = '#3A3A38';
+    cx.save(); cx.rotate(0.55);
+    cx.fillRect(-s*0.08,-s*0.32,s*0.16,s*0.5);
+    cx.fillStyle = '#D7263D';
+    cx.fillRect(-s*0.08,-s*0.32,s*0.16,s*0.08);
+    cx.restore();
+    cx.fillStyle = 'rgba(230,228,222,0.85)';
+    for(let i=0;i<3;i++){
+      cx.beginPath();
+      cx.arc(s*0.12+i*7,-s*0.28-i*5, s*0.1 - i, 0, Math.PI*2);
+      cx.fill();
+    }
+  }
+  function drawTree(cx,s){
+    cx.fillStyle = '#7A4A26';
+    cx.fillRect(-s*0.05,s*0.05,s*0.1,s*0.28);
+    cx.fillStyle = '#3F8F29';
+    cx.beginPath(); cx.arc(0,-s*0.12,s*0.28,0,Math.PI*2); cx.fill();
+    cx.fillStyle = '#4FA834';
+    cx.beginPath(); cx.arc(-s*0.1,-s*0.24,s*0.16,0,Math.PI*2); cx.fill();
+  }
+  function drawSolar(cx,s){
+    cx.fillStyle = '#FFC72C';
+    cx.beginPath(); cx.arc(s*0.1,-s*0.32,s*0.13,0,Math.PI*2); cx.fill();
+    cx.save(); cx.rotate(-0.12);
+    cx.fillStyle = '#274156';
+    cx.fillRect(-s*0.34,-s*0.06,s*0.68,s*0.36);
+    cx.strokeStyle = 'rgba(245,241,232,0.7)'; cx.lineWidth = 1.4;
+    for(let i=1;i<3;i++){
+      cx.beginPath(); cx.moveTo(-s*0.34+i*s*0.68/3, -s*0.06); cx.lineTo(-s*0.34+i*s*0.68/3, s*0.3); cx.stroke();
+    }
+    cx.beginPath(); cx.moveTo(-s*0.34,s*0.12); cx.lineTo(s*0.34,s*0.12); cx.stroke();
+    cx.restore();
+  }
+  function drawBike(cx,s){
+    cx.strokeStyle = '#1B1A17'; cx.lineWidth = s*0.045; cx.lineCap='round';
+    cx.beginPath(); cx.arc(-s*0.2,s*0.14,s*0.16,0,Math.PI*2); cx.stroke();
+    cx.beginPath(); cx.arc(s*0.2,s*0.14,s*0.16,0,Math.PI*2); cx.stroke();
+    cx.strokeStyle = '#C1440E';
+    cx.beginPath();
+    cx.moveTo(-s*0.2,s*0.14); cx.lineTo(0,-s*0.14); cx.lineTo(s*0.2,s*0.14);
+    cx.lineTo(-s*0.02,s*0.14); cx.lineTo(0,-s*0.14);
+    cx.moveTo(0,-s*0.14); cx.lineTo(s*0.08,-s*0.24);
+    cx.stroke();
+  }
+  function drawWater(cx,s){
+    cx.fillStyle = '#2E86AB';
+    cx.beginPath();
+    cx.moveTo(0,-s*0.32);
+    cx.quadraticCurveTo(s*0.26,s*0.06,0,s*0.3);
+    cx.quadraticCurveTo(-s*0.26,s*0.06,0,-s*0.32);
+    cx.fill();
+    cx.fillStyle = 'rgba(255,255,255,0.5)';
+    cx.beginPath(); cx.arc(-s*0.06,0,s*0.05,0,Math.PI*2); cx.fill();
+  }
+  function drawSweep(cx,s){
+    cx.fillStyle = '#FFC72C';
+    const spikes = 8, outerR = s*0.34, innerR = s*0.13;
+    cx.beginPath();
+    for(let i=0;i<spikes*2;i++){
+      const r = i%2===0 ? outerR : innerR;
+      const a = (Math.PI/spikes)*i - Math.PI/2;
+      const px = Math.cos(a)*r, py = Math.sin(a)*r;
+      i===0 ? cx.moveTo(px,py) : cx.lineTo(px,py);
+    }
+    cx.closePath(); cx.fill();
+  }
+  function drawMonster(cx,s,angry){
+    cx.fillStyle = angry ? '#5A5650' : '#6F6A61';
+    cx.beginPath();
+    cx.arc(0,0,s*0.46,0,Math.PI*2); cx.fill();
+    for(let i=-1;i<=1;i+=2){
+      cx.beginPath(); cx.arc(i*s*0.3,-s*0.05,s*0.14,0,Math.PI*2); cx.fill();
+    }
+    cx.fillStyle = '#F5F1E8';
+    cx.beginPath(); cx.arc(-s*0.14,-s*0.06,s*0.09,0,Math.PI*2); cx.fill();
+    cx.beginPath(); cx.arc(s*0.14,-s*0.06,s*0.09,0,Math.PI*2); cx.fill();
+    cx.fillStyle = '#1B1A17';
+    cx.beginPath(); cx.arc(-s*0.14,-s*0.06,s*0.045,0,Math.PI*2); cx.fill();
+    cx.beginPath(); cx.arc(s*0.14,-s*0.06,s*0.045,0,Math.PI*2); cx.fill();
+    cx.strokeStyle = '#D7263D'; cx.lineWidth = s*0.03;
+    cx.beginPath(); cx.moveTo(-s*0.1,s*0.1); cx.quadraticCurveTo(0,s*0.02,s*0.1,s*0.1); cx.stroke();
+  }
+
+  function drawSlow(cx,s){
+    cx.fillStyle='#2E9BD6'; cx.beginPath(); cx.arc(0,0,s*0.32,0,Math.PI*2); cx.fill();
+    cx.strokeStyle='#fff'; cx.lineWidth=s*0.06; cx.lineCap='round';
+    cx.beginPath(); cx.moveTo(0,0); cx.lineTo(0,-s*0.2); cx.moveTo(0,0); cx.lineTo(s*0.14,s*0.08); cx.stroke();
+  }
+  const ICONS = { slow: drawSlow,
+    factory: drawFactory, tyre: drawTyreFire, taxi: drawTaxi, dust: drawMineDust, vape: drawVape,
+    tree: drawTree, solar: drawSolar, bike: drawBike, water: drawWater, sweep: drawSweep
+  };
+
+  const BAD = [
+    {icon:'factory', label:'factory smoke'},
+    {icon:'tyre', label:'tyre fire'},
+    {icon:'taxi', label:'exhaust fumes'},
+    {icon:'dust', label:'mine dust'},
+    {icon:'vape', label:'vape smoke', vape:true}
+  ];
+  const GOOD = [
+    {icon:'tree', label:'tree'},
+    {icon:'solar', label:'solar power'},
+    {icon:'bike', label:'bicycle'},
+    {icon:'water', label:'clean water'}
+  ];
+
+  /* ============================================================
+     Zone + mode selection UI
+  ============================================================ */
+  let selectedZone = ZONES[0];
+  let selectedMode = 'classic';
+
+  ZONES.forEach((z,i)=>{
+    const b = document.createElement('button');
+    b.className = 'zoneChip' + (i===0 ? ' active' : '');
+    b.textContent = z.name;
+    b.addEventListener('click', ()=>{
+      selectedZone = z;
+      [...zoneRow.children].forEach(c=>c.classList.remove('active'));
+      b.classList.add('active');
+    });
+    zoneRow.appendChild(b);
+  });
+
+  const MODES = [
+    {key:'classic', icon:'🌬️', name:'Clean-Up', desc:'Clear the sky before 60s runs out', cta:'Start Busting'},
+    {key:'quiz', icon:'🧠', name:'Quick Quiz', desc:'8 rapid Jozi air-quality questions', cta:'Start Quiz'},
+    {key:'fight', icon:'👊', name:'Fight!', desc:'Knock out the Smog Monster', cta:'Start Fight'}
+  ];
+  MODES.forEach((m,i)=>{
+    const d = document.createElement('div');
+    d.className = 'modeCard' + (i===0 ? ' active' : '');
+    d.innerHTML = `<span class="ic">${m.icon}</span><b>${m.name}</b><span>${m.desc}</span>`;
+    d.addEventListener('click', ()=>{
+      selectedMode = m.key;
+      [...modeRow.children].forEach(c=>c.classList.remove('active'));
+      d.classList.add('active');
+      startBtn.textContent = m.cta;
+      zoneRow.parentElement && (zoneRow.style.opacity = m.key==='quiz' ? '0.35' : '1');
+      zoneRow.style.pointerEvents = m.key==='quiz' ? 'none' : 'auto';
+    });
+    modeRow.appendChild(d);
+  });
+
+  /* ============================================================
+     Shared game state
+  ============================================================ */
+  const ROUND_TIME = 60;
+  const FIGHT_TIME = 45;
+  let objects = [], particles = [];
+  let score = 0, meter = 55, breath = 100, timeLeft = ROUND_TIME;
+  let combo = 0, lastBustAt = 0;
+  let spawnTimer = 0, spawnEvery = 1.05;
+  let running = false, rafId = null, lastT = 0;
+  let shake = 0, bestScore = 0, timeSinceSweep = 0, slowUntil = 0;
+  try{ bestScore = +localStorage.getItem('jab_best') || 0; }catch(e){}
+  let bossTauntTimer = 0;
+
+  let leaderboard = []; // session only: {initials, score, mode, zone}
+
+  function reset(){
+    objects = []; particles = [];
+    score = 0; combo = 0; lastBustAt = 0; spawnTimer = 0; spawnEvery = 1.05; shake = 0;
+    timeSinceSweep = 0; bossTauntTimer = 0;
+    if(selectedMode === 'fight'){
+      meter = 0; breath = 100; timeLeft = FIGHT_TIME;
+      mainBarLbl.textContent = 'BOSS HP DEALT';
+      breathRow.style.display = 'flex';
+      bossTag.style.display = 'block';
+    } else {
+      meter = 55; timeLeft = ROUND_TIME;
+      mainBarLbl.textContent = 'CLEAN AIR';
+      breathRow.style.display = 'none';
+      bossTag.style.display = 'none';
+    }
+    scoreVal.textContent = '0';
+    timeVal.textContent = String(timeLeft);
+    updateBars();
+    vignette.classList.remove('danger');
+  }
+
+  function updateBars(){
+    const pct = Math.max(0, Math.min(100, meter));
+    mainBarFill.style.width = pct + '%';
+    let color;
+    if(selectedMode === 'fight'){
+      color = 'linear-gradient(90deg,#D7263D,#FF6B4A)';
+      breathFill.style.width = Math.max(0,Math.min(100,breath)) + '%';
+      vignette.classList.toggle('danger', breath > 0 && breath < 28);
+    } else {
+      if(pct > 60) color = 'linear-gradient(90deg,#3F8F29,#7BC142)';
+      else if(pct > 30) color = 'linear-gradient(90deg,#E0A400,#FFC72C)';
+      else color = 'linear-gradient(90deg,#B01E2E,#D7263D)';
+      vignette.classList.toggle('danger', pct > 0 && pct < 22);
+    }
+    mainBarFill.style.background = color;
+  }
+
+  /* ---------------- Spawning ---------------- */
+  function spawnObject(){
+    const elapsed0 = (selectedMode==='fight'?FIGHT_TIME:ROUND_TIME) - timeLeft;
+    if(elapsed0 > 12 && timeSinceSweep > 9 && Math.random() < 0.06){
+      timeSinceSweep = 0;
+      const size = 46;
+      objects.push({x:24+Math.random()*(W-48), y:H+size, size, icon:'sweep', bad:false, sweep:true, vape:false,
+        vy:-(50+Math.random()*20), wobblePhase:Math.random()*Math.PI*2, wobbleAmp:14, rot:0, alive:true, bustAnim:0});
+      return;
+    }
+    if(elapsed0 > 6 && Math.random() < 0.06){
+      const slow = Math.random() < 0.4, size = 50;
+      objects.push({x:24+Math.random()*(W-48), y:H+size, size, icon: slow?'slow':'taxi', bad:!slow, gold:!slow, slow, sweep:false, vape:false,
+        vy:-(75+Math.random()*30), wobblePhase:0, wobbleAmp:16, rot:0, alive:true, bustAnim:0});
+      return;
+    }
+    const isBad = Math.random() < 0.72;
+    const set = isBad ? BAD : GOOD;
+    const def = set[Math.floor(Math.random()*set.length)];
+    const size = 40 + Math.random()*20;
+    objects.push({
+      x: 24 + Math.random()*(W-48), y: H + size, size, icon: def.icon, bad: isBad, vape: !!def.vape, sweep:false,
+      vy: -(55 + Math.random()*35 + Math.min(timeLeft,40)*0.4),
+      wobblePhase: Math.random()*Math.PI*2, wobbleAmp: 10+Math.random()*14, rot:(Math.random()-0.5)*0.4,
+      alive:true, bustAnim:0
+    });
+  }
+
+  const CONF = ['#FFC72C','#FF5C8A','#4FD1C5','#7B5CFF','#7BC142','#FF8A3D'];
+  function burst(x,y,color,n){
+    particles.push({x,y,vx:0,vy:0,life:1,color,ring:true,size:1});
+    for(let i=0;i<n;i++){
+      const a = Math.random()*Math.PI*2, sp = 60+Math.random()*180;
+      particles.push({x,y,vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-40, life:1, color: Math.random()<0.5?color:CONF[i%CONF.length], size:3+Math.random()*4});
+    }
+  }
+  function popText(x,y,txt,color,big){ particles.push({x,y,vx:0,vy:-50,life:1,text:txt,color,big}); }
+
+  /* ---------------- Input ---------------- */
+  function handlePoint(px,py){
+    for(let i=objects.length-1;i>=0;i--){
+      const o = objects[i];
+      if(!o.alive) continue;
+      const dx = px-o.x, dy = py-o.y, rad = o.size*0.62;
+      if(dx*dx+dy*dy <= rad*rad){ resolveHit(o); break; }
+    }
+  }
+
+  function resolveHit(o){
+    o.alive = false; o.bustAnim = 1;
+    const fight = selectedMode === 'fight';
+
+    if(o.slow){ slowUntil = performance.now()+5000; burst(o.x,o.y,'#50C8FF',22); sfxSweep(); showHype('SLOW-MO!'); say('Slow motion!'); return; }
+    if(o.sweep){
+      let cleared = 0;
+      objects.forEach(other=>{
+        if(other!==o && other.alive && other.bad){ other.alive=false; other.bustAnim=1; burst(other.x,other.y,'#FFC72C',10); cleared++; }
+      });
+      if(fight){
+        meter = Math.min(100, meter + 28);
+        score += 60 + cleared*8;
+      } else {
+        const pts = 40 + cleared*8;
+        score += pts;
+        meter = Math.min(100, meter + 18);
+      }
+      scoreVal.textContent = String(score);
+      updateBars();
+      burst(o.x,o.y,'#7BC142',26);
+      sfxSweep(); buzz([15,40,15,60]);
+      showHype('CLEAN SWEEP!');
+      say(pop(LINES_SWEEP), {pitch:1.05, rate:1.0});
+      return;
+    }
+
+    if(o.bad){
+      const now = performance.now();
+      if(now - lastBustAt < 850){ combo++; } else { combo = 1; }
+      lastBustAt = now;
+      const mult = Math.min(1+combo*0.25, 5);
+      const pts = Math.round(10*mult) * (o.gold?5:1);
+      score += pts;
+      popText(o.x,o.y-10,'+'+pts,o.gold?'#FFC72C':'#FFFFFF',o.gold||combo>=4);
+      if(fight){ meter = Math.min(100, meter + 7*mult); } else { meter = Math.min(100, meter + 4); }
+      scoreVal.textContent = String(score);
+      updateBars();
+      burst(o.x,o.y,'#FFC72C',14);
+      sfxBust(); buzz(10);
+      if(score > bestScore) bestScore = score;
+
+      if(o.vape){ say(pop(LINES_VAPE), {pitch:1.02}); }
+      else if(fight && Math.random() < 0.3){ say(pop(LINES_BOSS_HIT), {pitch:0.96, rate:0.98}); }
+      else if(combo >= 3 && combo % 3 === 0){ sfxCombo(combo); showHype(pop(HYPE_WORDS)); say(pop(LINES_COMBO), {pitch:1.03, rate:1.0}); }
+      else if(Math.random() < 0.22){ say(pop(LINES_BUST)); }
+
+      if(combo >= 2){
+        sfxCombo(combo);
+        comboTag.textContent = 'COMBO x'+combo;
+        comboTag.classList.add('show');
+        clearTimeout(comboTag._t);
+        comboTag._t = setTimeout(()=>comboTag.classList.remove('show'), 500);
+      }
+      if(fight && meter >= 100){ endGame(true); }
+    } else {
+      combo = 0;
+      score = Math.max(0, score - 6);
+      scoreVal.textContent = String(score);
+      if(fight){ breath = Math.max(0, breath - 12); } else { meter = Math.max(0, meter - 10); }
+      updateBars();
+      burst(o.x,o.y,'#D7263D',10);
+      sfxPenalty(); buzz(40); shake = 8;
+      if(fight && breath <= 0){ endGame(false); }
+    }
+  }
+
+  canvas.addEventListener('pointerdown', (e)=>{
+    if(!running) return;
+    const r = canvas.getBoundingClientRect();
+    handlePoint(e.clientX-r.left, e.clientY-r.top);
+  });
+  let pointerActive = false;
+  canvas.addEventListener('pointerdown', ()=> pointerActive = true);
+  window.addEventListener('pointerup', ()=> pointerActive = false);
+  canvas.addEventListener('pointermove', (e)=>{
+    if(!running || !pointerActive) return;
+    const r = canvas.getBoundingClientRect();
+    handlePoint(e.clientX-r.left, e.clientY-r.top);
+  });
+
+  /* ---------------- Update / Draw ---------------- */
+  function update(dt){
+    const fight = selectedMode === 'fight';
+    const roundLen = fight ? FIGHT_TIME : ROUND_TIME;
+    const elapsed = roundLen - timeLeft;
+    spawnEvery = Math.max(0.4, (fight?0.9:1.05) - elapsed*0.013);
+    timeSinceSweep += dt;
+
+    spawnTimer += dt;
+    if(spawnTimer >= spawnEvery){ spawnTimer = 0; spawnObject(); }
+
+    if(fight){
+      bossTauntTimer += dt;
+      if(bossTauntTimer > 6){ bossTauntTimer = 0; if(Math.random()<0.6) say(pop(LINES_BOSS), {pitch:0.92, rate:0.96}); }
+    } else {
+      meter -= dt*1.15;
+      if(meter < 0) meter = 0;
+    }
+
+    for(let i=objects.length-1;i>=0;i--){
+      const o = objects[i];
+      if(o.bustAnim > 0){ o.bustAnim -= dt*4; if(o.bustAnim<=0) objects.splice(i,1); continue; }
+      if(!o.alive) continue;
+      o.y += o.vy*dt*(performance.now()<slowUntil?0.45:1);
+      o.wobblePhase += dt*2.2;
+      if(o.y < -o.size){
+        if(o.bad){
+          if(fight) breath = Math.max(0, breath - 8); else meter = Math.max(0, meter - 6);
+        }
+        objects.splice(i,1);
+      }
+    }
+    for(let i=particles.length-1;i>=0;i--){
+      const p = particles[i];
+      if(!p.text&&!p.ring) p.vy += 260*dt; p.x += p.vx*dt; p.y += p.vy*dt; p.life -= dt*(p.text?1.1:1.6);
+      if(p.life<=0) particles.splice(i,1);
+    }
+
+    updateBars();
+    if(shake > 0) shake = Math.max(0, shake - dt*30);
+
+    if(!fight && meter <= 0) endGame(false);
+    if(fight && breath <= 0) endGame(false);
+  }
+
+  function drawSkyline(pct, landmark){
+    ctx.save(); ctx.globalAlpha = 0.5; ctx.fillStyle = '#1B1A17';
+    const baseY = H;
+    if(landmark === 'shacks'){
+      for(let i=0;i<9;i++){
+        const bx = W*(0.05+i*0.1), bw = W*0.06, bh = H*(0.07+ (i%3)*0.02);
+        ctx.fillRect(bx, baseY-bh, bw, bh);
+        ctx.strokeStyle = 'rgba(139,131,120,0.6)'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(bx+bw*0.5, baseY-bh); ctx.lineTo(bx+bw*0.5+3, baseY-bh-H*0.05); ctx.stroke();
+      }
+    } else if(landmark === 'towers'){
+      const cx1 = W*0.32, cx2 = W*0.5, cw = W*0.06, ch = H*0.22;
+      ctx.fillRect(cx1-cw/2, baseY-ch, cw, ch);
+      ctx.fillRect(cx2-cw/2, baseY-ch, cw, ch);
+      ctx.fillRect(cx1, baseY-ch*0.7, cx2-cx1, H*0.02);
+      [0.1,0.65,0.85].forEach(x=>{ctx.fillRect(W*x, baseY-H*0.12, W*0.07, H*0.12);});
+    } else if(landmark === 'dense'){
+      for(let i=0;i<12;i++){
+        const bw = W*0.045, bx = W*0.03+i*(W*0.08), bh = H*(0.08+((i*37)%5)*0.015);
+        ctx.fillRect(bx, baseY-bh, bw, bh);
+      }
+    } else if(landmark === 'skyscrapers'){
+      const heights = [0.12,0.22,0.16,0.28,0.14,0.20];
+      heights.forEach((hh,i)=>{
+        const bx = W*(0.06+i*0.15), bw = W*0.08;
+        ctx.fillStyle = 'rgba(46,134,171,0.35)';
+        ctx.fillRect(bx, baseY-H*hh, bw, H*hh);
+        ctx.fillStyle = '#1B1A17';
+        ctx.fillRect(bx, baseY-H*hh, bw, H*0.015);
+      });
+    } else {
+      const blocks = [{x:W*0.04,w:W*0.07,h:H*0.14},{x:W*0.13,w:W*0.05,h:H*0.20},{x:W*0.20,w:W*0.09,h:H*0.11},
+        {x:W*0.62,w:W*0.06,h:H*0.16},{x:W*0.70,w:W*0.05,h:H*0.10},{x:W*0.88,w:W*0.08,h:H*0.13}];
+      blocks.forEach(b=> ctx.fillRect(b.x, baseY-b.h, b.w, b.h));
+      const cx = W*0.40, cw = W*0.055, ch = H*0.26;
+      ctx.fillRect(cx, baseY-ch, cw, ch);
+      ctx.clearRect(cx+cw*0.32, baseY-ch*0.55, cw*0.36, ch*0.5);
+      ctx.fillStyle = 'rgba(27,26,23,0.5)';
+      ctx.fillRect(cx+cw*0.32, baseY-ch*0.55, cw*0.36, ch*0.5);
+    }
+    ctx.restore();
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    ctx.save();
+    if(shake > 0) ctx.translate((Math.random()-0.5)*shake, (Math.random()-0.5)*shake);
+
+    const fight = selectedMode === 'fight';
+    const pct = fight ? Math.max(0,Math.min(100,breath))/100 : Math.max(0,Math.min(100,meter))/100;
+    const g = ctx.createLinearGradient(0,0,0,H);
+    const clear=[46,134,171], haze=[139,131,120];
+    const mix=(a,b,t)=>Math.round(a+(b-a)*t);
+    const top = `rgb(${mix(haze[0],clear[0],pct)},${mix(haze[1],clear[1],pct)},${mix(haze[2],clear[2],pct)})`;
+    g.addColorStop(0, top);
+    g.addColorStop(1, 'rgba(199,188,166,'+(1-pct*0.3)+')');
+    ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+    const tt = performance.now()/1000;
+    const sg = ctx.createRadialGradient(W*0.8,H*0.18,4,W*0.8,H*0.18,W*0.55);
+    sg.addColorStop(0,'rgba(255,214,102,'+(0.25+pct*0.6)+')'); sg.addColorStop(1,'rgba(255,214,102,0)');
+    ctx.fillStyle = sg; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = 'rgba(255,255,255,'+(0.10+pct*0.25)+')';
+    for(let i=0;i<4;i++){ const cxp=((tt*(8+i*3)+i*W*0.35)%(W+160))-80, cyp=H*(0.12+i*0.11); ctx.beginPath(); ctx.ellipse(cxp,cyp,60,16,0,0,7); ctx.ellipse(cxp+30,cyp-8,36,14,0,0,7); ctx.fill(); }
+    drawSkyline(pct, selectedZone.landmark);
+    if(pct<0.4){ ctx.fillStyle='rgba(120,95,60,'+((0.4-pct)*0.6)+')'; ctx.fillRect(0,0,W,H); }
+
+    if(fight){
+      ctx.save();
+      const bx = W*0.5, by = H*0.16, bs = Math.min(W,H)*0.3;
+      ctx.translate(bx,by);
+      drawMonster(ctx, bs, meter>50);
+      ctx.restore();
+    }
+
+    objects.forEach(o=>{
+      ctx.save();
+      const wobble = Math.sin(o.wobblePhase)*o.wobbleAmp*0.15;
+      const scale = o.bustAnim>0 ? 1+(1-o.bustAnim)*0.9 : 1;
+      const alpha = o.bustAnim>0 ? o.bustAnim : 1;
+      ctx.globalAlpha = Math.max(0,alpha);
+      ctx.translate(o.x+wobble, o.y);
+      ctx.rotate(o.rot); ctx.scale(scale,scale);
+      const gc = (o.sweep||o.gold) ? '255,199,44' : (o.slow ? '80,200,255' : (o.bad ? '255,110,60' : '90,220,140'));
+      const gr = ctx.createRadialGradient(0,0,2,0,0,o.size*0.8);
+      gr.addColorStop(0,'rgba('+gc+',0.55)'); gr.addColorStop(1,'rgba('+gc+',0)');
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0,0,o.size*0.8,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(0,0,o.size*0.52,0,Math.PI*2);
+      ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fill();
+      ctx.lineWidth = (o.sweep||o.gold||o.slow)?3:2; ctx.strokeStyle='rgba('+gc+',0.95)'; ctx.stroke();
+      const draw2 = ICONS[o.icon];
+      if(draw2) draw2(ctx, o.size);
+      ctx.restore();
+    });
+
+    particles.forEach(p=>{
+      ctx.globalAlpha = Math.max(0,p.life);
+      if(p.text){ ctx.font='800 '+(p.big?26:18)+'px "Baloo 2",sans-serif'; ctx.textAlign='center'; ctx.lineWidth=4; ctx.strokeStyle='rgba(27,26,23,.85)'; ctx.strokeText(p.text,p.x,p.y); ctx.fillStyle=p.color; ctx.fillText(p.text,p.x,p.y); return; }
+      if(p.ring){ ctx.lineWidth=3; ctx.strokeStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,(1-p.life)*60+8,0,Math.PI*2); ctx.stroke(); return; }
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /* ---------------- Loop ---------------- */
+  function loop(t){
+    if(!running) return;
+    const dt = Math.min(0.033, (t-lastT)/1000 || 0);
+    lastT = t;
+    update(dt); draw();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  let tickInterval = null;
+  function startTimer(){
+    clearInterval(tickInterval);
+    tickInterval = setInterval(()=>{
+      if(!running) return;
+      timeLeft -= 1;
+      timeVal.textContent = String(Math.max(0,timeLeft));
+      const el = (selectedMode==='fight'?FIGHT_TIME:ROUND_TIME) - timeLeft;
+      if(el>0 && el%15===0 && timeLeft>0){ showHype('WAVE '+(el/15+1)); beep(880,0.15,'square',0.06); }
+      if(timeLeft <= 0){ endGame(selectedMode !== 'fight'); }
+    }, 1000);
+  }
+
+  function startGame(){
+    if(selectedMode === 'quiz'){ startQuiz(); return; }
+    reset();
+    startOverlay.classList.add('hidden');
+    endOverlay.classList.add('hidden');
+    lbOverlay.classList.add('hidden');
+    running = true;
+    lastT = performance.now();
+    startTimer();
+    if(rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(loop);
+    if(bestScore > 0){ startBestLine.style.display='block'; startBestVal.textContent=String(bestScore); }
+  }
+
+  function endGame(cleared){
+    running = false;
+    clearInterval(tickInterval);
+    if(rafId) cancelAnimationFrame(rafId);
+    if(score > bestScore) bestScore = score;
+    finalScore.textContent = String(score);
+    const fight = selectedMode === 'fight';
+    endHeadline.textContent = fight
+      ? (cleared ? 'BOSS DEFEATED' : 'SMOGGED OUT')
+      : (cleared ? "ROUND CLEAR — SKY'S CLEARING" : 'SMOGGED OUT');
+    factText.textContent = selectedZone.fact;
+    endBestLine.textContent = 'Best: ' + bestScore;
+    try{ localStorage.setItem('jab_best', String(bestScore)); }catch(e){}
+    endOverlay.classList.remove('hidden');
+    vignette.classList.remove('danger');
+    if(cleared){ sfxWin(); say(pop(fight?LINES_BOSS_WIN:LINES_WIN), {pitch:1.02}); }
+    else { sfxLose(); say(pop(LINES_LOSE), {pitch:0.98, rate:0.97}); }
+  }
+
+  /* ============================================================
+     Quick Quiz mode
+  ============================================================ */
+  const quizProgress = document.getElementById('quizProgress');
+  const quizTimerFill = document.getElementById('quizTimerFill');
+  const quizQ = document.getElementById('quizQ');
+  const quizOpts = document.getElementById('quizOpts');
+  const quizExplain = document.getElementById('quizExplain');
+  const quizScoreVal = document.getElementById('quizScoreVal');
+
+  let quizOrder = [], quizIdx = 0, quizScore = 0, quizStreak = 0;
+  let quizTimer = null, quizTimeLeft = 0, quizAnswered = false;
+  const QUIZ_TIME = 12;
+
+  function shuffledIndices(n){
+    const a = Array.from({length:n}, (_,i)=>i);
+    for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+    return a;
+  }
+
+  function startQuiz(){
+    startOverlay.classList.add('hidden');
+    endOverlay.classList.add('hidden');
+    lbOverlay.classList.add('hidden');
+    quizOverlay.classList.remove('hidden');
+    quizOrder = shuffledIndices(QUIZ.length);
+    quizIdx = 0; quizScore = 0; quizStreak = 0;
+    quizScoreVal.textContent = '0';
+    showQuizQuestion();
+  }
+
+  function showQuizQuestion(){
+    quizAnswered = false;
+    const item = QUIZ[quizOrder[quizIdx]];
+    quizProgress.textContent = `QUESTION ${quizIdx+1} / ${QUIZ.length}`;
+    quizQ.textContent = item.q;
+    quizExplain.style.display = 'none';
+    quizOpts.innerHTML = '';
+    const optOrder = shuffledIndices(item.opts.length);
+    optOrder.forEach(oi=>{
+      const btn = document.createElement('button');
+      btn.className = 'quizOpt';
+      btn.textContent = item.opts[oi];
+      btn.addEventListener('click', ()=> handleQuizAnswer(oi, item, btn));
+      quizOpts.appendChild(btn);
+    });
+    quizTimeLeft = QUIZ_TIME;
+    quizTimerFill.style.transition = 'none';
+    quizTimerFill.style.width = '100%';
+    requestAnimationFrame(()=>{ quizTimerFill.style.transition = `width ${QUIZ_TIME}s linear`; quizTimerFill.style.width = '0%'; });
+    clearInterval(quizTimer);
+    quizTimer = setInterval(()=>{
+      quizTimeLeft -= 0.5;
+      if(quizTimeLeft <= 0 && !quizAnswered){ clearInterval(quizTimer); handleQuizAnswer(-1, item, null); }
+    }, 500);
+  }
+
+  function handleQuizAnswer(chosenIdx, item, btnEl){
+    if(quizAnswered) return;
+    quizAnswered = true;
+    clearInterval(quizTimer);
+    const correct = chosenIdx === item.correct;
+    [...quizOpts.children].forEach(b=>{
+      if(b.textContent === item.opts[item.correct]) b.classList.add('correct');
+      else if(b === btnEl) b.classList.add('wrong');
+    });
+    if(correct){
+      quizStreak++;
+      const timeBonus = Math.max(0, Math.round(quizTimeLeft));
+      const pts = 15 + timeBonus;
+      quizScore += pts;
+      sfxBust(); buzz(10);
+      if(quizStreak >= 3){ showHype(pop(HYPE_WORDS)); say(pop(LINES_COMBO), {pitch:1.03}); sfxCombo(quizStreak); }
+      else { say(pop(LINES_BUST)); }
+    } else {
+      quizStreak = 0;
+      sfxPenalty(); buzz(40);
+    }
+    quizScoreVal.textContent = String(quizScore);
+    quizExplain.style.display = 'block';
+    quizExplain.textContent = item.explain;
+    setTimeout(()=>{
+      quizIdx++;
+      if(quizIdx >= QUIZ.length){ endQuiz(); } else { showQuizQuestion(); }
+    }, 1900);
+  }
+
+  function endQuiz(){
+    quizOverlay.classList.add('hidden');
+    score = quizScore;
+    if(score > bestScore) bestScore = score;
+    finalScore.textContent = String(score);
+    endHeadline.textContent = quizScore >= QUIZ.length*20 ? 'AIR QUALITY EXPERT' : 'QUIZ COMPLETE';
+    factText.textContent = pop(FACTS);
+    endBestLine.textContent = 'Best today: ' + bestScore;
+    endOverlay.classList.remove('hidden');
+    sfxWin(); say(pop(LINES_WIN), {pitch:1.02});
+  }
+
+  /* ============================================================
+     Leaderboard
+  ============================================================ */
+  function modeLabel(){
+    if(selectedMode==='quiz') return 'Quiz';
+    if(selectedMode==='fight') return 'Fight!';
+    return 'Clean-Up';
+  }
+  function addToLeaderboard(initials){
+    const entry = { initials: (initials||'AIR').toUpperCase().slice(0,3) || 'AIR', score, mode: modeLabel(), zone: selectedMode==='quiz' ? '' : selectedZone.name };
+    leaderboard.push(entry);
+    leaderboard.sort((a,b)=>b.score-a.score);
+    leaderboard = leaderboard.slice(0,10);
+  }
+  function renderLeaderboard(){
+    lbList.innerHTML = '';
+    if(leaderboard.length === 0){ lbEmpty.classList.remove('hidden'); return; }
+    lbEmpty.classList.add('hidden');
+    leaderboard.forEach((e,i)=>{
+      const li = document.createElement('li');
+      const tagStr = e.zone ? `${e.mode} · ${e.zone}` : e.mode;
+      li.innerHTML = `<span class="rank">${i+1}</span><span class="who">${e.initials}<div class="tag">${tagStr}</div></span><span class="pts">${e.score}</span>`;
+      lbList.appendChild(li);
+    });
+  }
+
+  saveScoreBtn.addEventListener('click', ()=>{
+    addToLeaderboard(initialsInput.value);
+    saveScoreBtn.textContent = 'Saved!';
+    setTimeout(()=> saveScoreBtn.textContent = 'Save score', 1200);
+  });
+  openLbBtn.addEventListener('click', ()=>{
+    renderLeaderboard();
+    startOverlay.classList.add('hidden');
+    lbOverlay.classList.remove('hidden');
+  });
+  lbFromEndBtn.addEventListener('click', ()=>{
+    renderLeaderboard();
+    endOverlay.classList.add('hidden');
+    lbOverlay.classList.remove('hidden');
+  });
+  closeLbBtn.addEventListener('click', ()=>{
+    lbOverlay.classList.add('hidden');
+    startOverlay.classList.remove('hidden');
+  });
+
+  /* ---------------- Wire up start / retry ---------------- */
+  startBtn.addEventListener('click', startGame);
+  retryBtn.addEventListener('click', ()=>{
+    endOverlay.classList.add('hidden');
+    startOverlay.classList.remove('hidden');
+  });
+
+  function unlockAudio(){
+    try{ actx = actx || new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended') actx.resume(); }catch(e){}
+    if(hasVoice){ try{ const u = new SpeechSynthesisUtterance(' '); u.volume=0; speechSynthesis.speak(u); }catch(e){} }
+    startBtn.removeEventListener('click', unlockAudio);
+  }
+  startBtn.addEventListener('click', unlockAudio);
+
+  if(bestScore>0){ startBestLine.style.display='block'; startBestVal.textContent=String(bestScore); }
+  resize();
+  draw();
+})();
+</script>
+</body>
+</html>
