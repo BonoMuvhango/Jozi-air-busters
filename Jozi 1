@@ -1,0 +1,7 @@
+cd jozi-air-busters
+git init
+git add index.html
+git commit -m "Initial commit: Jozi Air Busters"
+git branch -M main
+git remote add origin https://github.com/YOUR-USERNAME/jozi-air-busters.git
+git push -u origin main
